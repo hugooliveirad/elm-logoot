@@ -1,6 +1,8 @@
 import Dict as Dict exposing (..)
 import Set as Set exposing (..)
 import List as List exposing (..)
+import Array as Array
+import String as String
 
 type alias Doc =
   { cemetery : Cemetery
@@ -56,8 +58,11 @@ comparePid pidl pidr =
 zip : List a -> List b -> List (a,b)
 zip = map2 (,)
 
-generatePosition : Site -> Positions -> Positions -> Positions
-generatePosition site posl posr =
+find : (a -> Bool) -> List a -> Maybe a
+find pred = List.filter pred >> head
+
+pidBetween : Pid -> Pid -> Site -> Clock -> Pid
+pidBetween (posl, _) (posr, _) site clock =
   let
     comps =  zip posl posr
     loop = List.foldl (\(p1, p2) (folded, acc) ->
@@ -68,8 +73,52 @@ generatePosition site posl posr =
           then (True, acc ++ [(fst p1 + 1, site)])
           else (True, acc ++ [p1, (0, site)])
         GT -> (True, acc ++ [p2, (0, site)])) (False, []) comps
-    newPos = snd loop
+    pos = snd loop
+    newPost = if pos == posl
+      then pos ++ [(0, site)]
+      else pos
   in
-    if newPos == posl 
-    then newPos ++ [(0, site)]
-    else newPos
+    (newPost, clock)
+
+sortPids : List Pid -> List Pid
+sortPids pids =
+  sortWith comparePid pids
+
+findLeftRight : Pid -> Doc -> (Maybe Pid, Maybe Pid)
+findLeftRight pid doc =
+  let
+    pids = doc.content
+      |> Dict.keys
+      |> sortPids
+      |> Array.fromList
+    indexed = pids
+      |> Array.toIndexedList
+      |> find (\x -> snd x == pid)
+    index = case indexed of
+       Just (i, _) -> Just i
+       Nothing -> Nothing
+  in
+    case index of
+      Just i -> (Array.get i pids, Array.get (i+1) pids)
+      Nothing -> (Nothing, Nothing)
+
+insertAfter : Pid -> Site -> Clock -> PidContent -> Doc -> Doc
+insertAfter pid site clock content doc =
+  let
+    leftRight = findLeftRight pid doc
+    newPid = case leftRight of
+      (Just left, Just right) -> Just (pidBetween left right site clock)
+      _ -> Nothing
+  in
+    case newPid of
+      Just p -> insert p content doc
+      Nothing -> doc
+
+toString : Doc -> String
+toString doc =
+  doc.content
+    |> Dict.toList
+    |> sortWith (\(l, _) (r, _) -> comparePid l r)
+    |> List.map snd
+    |> String.join ""
+
