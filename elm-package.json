@@ -4,9 +4,11 @@
     "repository": "https://github.com/hugobessaa/elm-logoot.git",
     "license": "MIT",
     "source-directories": [
-        "."
+        "src"
     ],
-    "exposed-modules": [],
+    "exposed-modules": [
+      "Logoot"
+    ],
     "dependencies": {
         "elm-lang/core": "4.0.1 <= v < 5.0.0"
     },

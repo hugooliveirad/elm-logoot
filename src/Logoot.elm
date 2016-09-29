@@ -1,3 +1,13 @@
+module Logoot exposing (empty, insert, toDict, initialPid, lastPid, comparePid, pidBetween, padPositions)
+
+{-|
+  Simple Logoot implementation
+
+## Parts API
+
+@docs empty, insert, toDict, initialPid, lastPid, comparePid, pidBetween, padPositions
+-}
+
 import Dict as Dict exposing (..)
 import Set as Set exposing (..)
 import List as List exposing (..)
@@ -20,18 +30,24 @@ type alias Clock = Int
 
 maxInt = 32000
 
+{-| First Pid in every Logoot Doc -}
 initialPid : Pid
 initialPid = ([(0,0)], 0)
 
+{-| Last Pid in every Logoot Doc -}
 lastPid : Pid
 lastPid = ([(maxInt,0)], 0)
 
+{-| Empty Logoot.
+-}
 empty : Doc
 empty =
   { cemetery = Dict.empty
   , content = Dict.fromList [ (initialPid, ""), (lastPid, "") ]
   }
 
+{-| Insert a key in a Doc 
+-}
 insert : Pid -> PidContent -> Doc -> Doc
 insert pid content doc =
   { doc | content = Dict.insert pid content doc.content}
@@ -49,6 +65,8 @@ comparePos posl posr =
       [] -> compare (length posl) (length posr)
       res -> Maybe.withDefault EQ (head res)
 
+{-| Compares two Pids
+-}
 comparePid : Pid -> Pid -> Order
 comparePid pidl pidr =
   case comparePos (fst pidl) (fst pidr) of
@@ -61,18 +79,40 @@ zip = map2 (,)
 find : (a -> Bool) -> List a -> Maybe a
 find pred = List.filter pred >> head
 
+{-| padding
+-}
+padPositions : (Positions, Positions) -> (Positions, Positions)
+padPositions (p1, p2) =
+  let
+    l1 = length p1
+    l2 = length p2
+    diff = abs (l1 - l2)
+  in
+    case compare l1 l2 of
+      EQ -> (p1, p2)
+      LT -> (p1 ++ (repeat diff (0,-1)), p2)
+      GT -> (p1, p2 ++ (repeat diff (0,-1)))
+
+{-| Generate a Pid between two Pids.
+
+pidBetween ([(0,0),(0,3)],0) ([(0,0)],0) 2 2
+=> ([(0,0),(0,3),(0,2)])
+
+pidBetween ([(0,0),(0,0)],2) ([(0,0),(0,3)],0) 2 2
+=> ([(0,0),(0,0),(0,-1),(0,2)], 2)
+-}
 pidBetween : Pid -> Pid -> Site -> Clock -> Pid
 pidBetween (posl, _) (posr, _) site clock =
   let
-    comps =  zip posl posr
+    comps = (posl, posr) |> padPositions |> uncurry zip
     loop = List.foldl (\(p1, p2) (folded, acc) ->
       if folded then (folded, acc)
-      else case compare p1 p2 of
+      else case compare (fst p1) (fst p2) of
         EQ -> (False, acc ++ [p1])
-        LT -> if fst p1 + 1 < snd p2 
+        LT -> if fst p1 + 1 < fst p2
           then (True, acc ++ [(fst p1 + 1, site)])
-          else (True, acc ++ [p1, (0, site)])
-        GT -> (True, acc ++ [p2, (0, site)])) (False, []) comps
+          else (True, posl ++ [(0, site)])
+        GT -> (True, acc ++ [p1, (0, site)])) (False, []) comps
     pos = snd loop
     newPost = if pos == posl
       then pos ++ [(0, site)]
@@ -113,6 +153,11 @@ insertAfter pid site clock content doc =
     case newPid of
       Just p -> insert p content doc
       Nothing -> doc
+
+{-| Transforms a Doc into a Dict for easier usage
+-}
+toDict : Doc -> Dict Pid PidContent
+toDict = .content
 
 toString : Doc -> String
 toString doc =
