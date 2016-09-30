@@ -1,6 +1,6 @@
 {
-    "version": "1.0.0",
-    "summary": "logoot crdt ftw",
+    "version": "0.1.0",
+    "summary": "Simple Logoot implementation",
     "repository": "https://github.com/hugobessaa/elm-logoot.git",
     "license": "MIT",
     "source-directories": [
