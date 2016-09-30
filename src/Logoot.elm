@@ -1,5 +1,5 @@
-module Logoot exposing 
-  ( Logoot, Pid, PidContent
+module Logoot exposing
+  ( Logoot, Pid, PidContent, Positions, Position, Line, Site, Clock
   , empty, insert, remove, insertAfter, posBetween
   , toDict
   , keys, values, toList
@@ -29,7 +29,7 @@ There are a lot of missing pieces here, help us sending PRs to the GitHub [repos
 
 ## Types
 
-@docs Logoot, Pid, PidContent
+@docs Logoot, Pid, PidContent, Positions, Position, Line, Site, Clock
 
 ## Build
 
@@ -57,7 +57,12 @@ import String as String
 
 -- Types
 
-{-| -}
+{-| A Logoot.
+
+`Logoot` implementation details are hidden from the public API.
+
+You should use the provided functions to transform a `Logoot`.
+-}
 type Logoot =
   Logoot
     { cemetery : Cemetery
@@ -70,10 +75,15 @@ type alias Content = Dict Pid PidContent
 type alias Pid = (Positions, Clock)
 {-| -}
 type alias PidContent = String
+{-| -}
 type alias Positions = List Position
+{-| -}
 type alias Position = (Line, Site)
+{-| -}
 type alias Line = Int
+{-| -}
 type alias Site = Int
+{-| -}
 type alias Clock = Int
 
 -- Constants
@@ -93,7 +103,10 @@ lastPid = ([(maxInt,0)],0)
 
 An empty Logoot come with the first and last `Pid` in place. They should not be removed.
 
-    toDict empty == Dict.fromList [ (([(0,0)],0), ""), (([(maxInt,0)],0), "") ]
+    toDict empty == Dict.fromList
+      [ (([(0,0)],0), "")
+      , (([(maxInt,0)],0), "") 
+      ]
 -}
 empty : Logoot
 empty =
@@ -103,7 +116,7 @@ empty =
     }
 
 
-{-| Insert a key in a Logoot
+{-| Insert a key in a Logoot.
 
 This works like `Dict.insert` but with a `Logoot`.
 
@@ -123,9 +136,9 @@ insert pid content (Logoot doc) =
     then Logoot doc
     else setDegree pid d dg
 
-{-| Remove a key in a Logoot
+{-| Remove a key in a Logoot.
 
-This works like `Dict.remove` but with a `Logoot`
+This works like `Dict.remove` but with a `Logoot`.
 
     empty
       |> insert ([(1, 3)], 15) "it works"
@@ -144,7 +157,7 @@ remove pid content (Logoot doc) =
   then Logoot { doc | content = Dict.remove pid doc.content}
   else setDegree pid (Logoot doc) (degree pid (Logoot doc) - 1)
 
-{-| Insert PidContent that will come after Pid when Logoot is sorted
+{-| Insert PidContent that will come after Pid when Logoot is sorted.
 -}
 insertAfter : Site -> Clock -> PidContent -> Pid -> Logoot -> Logoot
 insertAfter site clock content pid  doc =
@@ -191,7 +204,7 @@ posBetween site posl posr =
 
 -- Dictionaries
 
-{-| Convert a Logoot into a Dict for easier usage
+{-| Convert a Logoot into a Dict for easier usage.
 -}
 toDict : Logoot -> Dict Pid PidContent
 toDict (Logoot {content}) = content
@@ -200,12 +213,12 @@ toDict (Logoot {content}) = content
 
 -- Lists
 
-{-| Get all of the keys in a Logoot, sorted from lowest to highest
+{-| Get all of the keys in a Logoot, sorted from lowest to highest.
 -}
 keys : Logoot -> List Pid
 keys = List.map fst << toList
 
-{-| Get all of the values in a Logoot, in the order of their keys
+{-| Get all of the values in a Logoot, in the order of their keys.
 -}
 values : Logoot -> List PidContent
 values = List.map snd << toList
