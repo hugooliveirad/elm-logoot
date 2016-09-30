@@ -1,9 +1,8 @@
 module Logoot exposing (
   empty, insert, remove, toDict, initialPid, lastPid, comparePid, comparePos, posBetween, padPositions,
-  Doc, Cemetery, Content, Pid, PidContent, Positions, Position, Line, Site, Clock)
+  Doc, Content, Pid, PidContent)
 
-{-|
-  Simple Logoot implementation
+{-| Simple Logoot implementation
 
 ## Parts API
 
@@ -11,7 +10,7 @@ module Logoot exposing (
 
 ## Types
 
-@docs Doc, Cemetery, Content, Pid, PidContent, Positions, Position, Line, Site, Clock
+@docs Doc, Content, Pid, PidContent
 -}
 
 import Dict as Dict exposing (..)
@@ -21,11 +20,11 @@ import Array as Array
 import String as String
 
 {-| -}
-type alias Doc =
-  { cemetery : Cemetery
-  , content : Content
-  }
-{-| -}
+type Doc =
+  Doc
+    { cemetery : Cemetery
+    , content : Content
+    }
 type alias Cemetery = Dict Pid Int
 {-| -}
 type alias Content = Dict Pid PidContent
@@ -33,15 +32,10 @@ type alias Content = Dict Pid PidContent
 type alias Pid = (Positions, Clock)
 {-| -}
 type alias PidContent = String
-{-| -}
 type alias Positions = List Position
-{-| -}
 type alias Position = (Line, Site)
-{-| -}
 type alias Line = Int
-{-| -}
 type alias Site = Int
-{-| -}
 type alias Clock = Int
 
 maxInt = 32000
@@ -58,9 +52,10 @@ lastPid = ([(maxInt,0)], 0)
 -}
 empty : Doc
 empty =
-  { cemetery = Dict.empty
-  , content = Dict.fromList [ (initialPid, ""), (lastPid, "") ]
-  }
+  Doc
+    { cemetery = Dict.empty
+    , content = Dict.fromList [ (initialPid, ""), (lastPid, "") ]
+    }
 
 (<<<) : (c -> d) -> (a -> b -> c) -> a -> b -> d
 (<<<) f g a b = f (g a b)
@@ -69,32 +64,33 @@ empty =
 (<<.) f g a b = f a (g b)
 
 degree : Pid -> Doc -> Int
-degree = Maybe.withDefault 0 <<< get <<. .cemetery
+degree pid (Doc {cemetery}) = get pid cemetery |> Maybe.withDefault 0
 
 setDegree : Pid -> Doc -> Int -> Doc
-setDegree pid doc d =
-  if d == 0
-  then {doc | cemetery = Dict.remove pid doc.cemetery}
-  else {doc | cemetery = Dict.insert pid d doc.cemetery}
+setDegree pid (Doc doc) d =
+  Doc <| 
+    if d == 0
+    then {doc | cemetery = Dict.remove pid doc.cemetery}
+    else {doc | cemetery = Dict.insert pid d doc.cemetery}
 
 {-| Insert a key in a Doc 
 -}
 insert : Pid -> PidContent -> Doc -> Doc
-insert pid content doc =
+insert pid content (Doc doc) =
   let
-    dg = degree pid doc + 1
-    d = {doc | content = Dict.insert pid content doc.content}
+    dg = degree pid (Doc doc) + 1
+    d = Doc {doc | content = Dict.insert pid content doc.content}
   in
     if dg == 0
-    then doc
+    then Doc doc
     else setDegree pid d dg
 
 {-| -}
 remove : Pid -> PidContent -> Doc -> Doc
-remove pid content doc =
+remove pid content (Doc doc) =
   if Dict.member pid doc.content
-  then { doc | content = Dict.remove pid doc.content}
-  else setDegree pid doc (degree pid doc - 1)
+  then Doc { doc | content = Dict.remove pid doc.content}
+  else setDegree pid (Doc doc) (degree pid (Doc doc) - 1)
 
 {-| Compare two Postionstion
 -} 
@@ -164,9 +160,9 @@ sortPids pids =
   sortWith comparePid pids
 
 findLeftRight : Pid -> Doc -> (Maybe Pid, Maybe Pid)
-findLeftRight pid doc =
+findLeftRight pid (Doc {content}) =
   let
-    pids = doc.content
+    pids = content
       |> Dict.keys
       |> sortPids
       |> Array.fromList
@@ -196,11 +192,11 @@ insertAfter pid site clock content doc =
 {-| Transforms a Doc into a Dict for easier usage
 -}
 toDict : Doc -> Dict Pid PidContent
-toDict = .content
+toDict (Doc {content}) = content
 
 toString : Doc -> String
-toString doc =
-  doc.content
+toString (Doc {content}) =
+  content
     |> Dict.toList
     |> sortWith (\(l, _) (r, _) -> comparePid l r)
     |> List.map snd
