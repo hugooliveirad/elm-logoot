@@ -100,7 +100,7 @@ all =
           , test "" <| \() -> Expect.equal (comparePid pids.bigTwoSmaller pids.bigTwo) LT
           ]
         ]
-      , describe "pidBetween"
+      , describe "posBetween"
         [ test "simple position between" <|
             \() -> Expect.equal (posBetween 2 [(1, 1)] [(5, 1)]) [(2, 2)]
         , test "simple position nothing between" <|
