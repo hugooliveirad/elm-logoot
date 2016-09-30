@@ -1,6 +1,7 @@
 module Logoot exposing
   ( Logoot, Pid, PidContent, Positions, Position, Line, Site, Clock
   , empty, insert, remove, insertAfter, posBetween
+  , isEmpty, member, get, size
   , toDict, fromDict
   , keys, values, toList, fromList
   , sortPids, comparePid, comparePos
@@ -34,6 +35,10 @@ There are a lot of missing pieces here, help us sending PRs to the GitHub [repos
 ## Build
 
 @docs empty, insert, remove, insertAfter, posBetween
+
+## Query
+
+@docs isEmpty, member, get, size
 
 ## Dictionaries
 
@@ -197,10 +202,25 @@ posBetween site posl posr =
 
 -- Query
 
--- TODO: isEmpty
--- TODO: member
--- TODO: get
--- TODO: size
+{-| Determine if a `Logoot` is empty. Works as `Dict.isEmpty`.
+-}
+isEmpty : Logoot -> Bool
+isEmpty = Dict.isEmpty << toDict
+
+{-| Determine if a key is in a `Logoot`. Works as `Dict.member`.
+-}
+member : Pid -> Logoot -> Bool
+member = Dict.member <<. toDict
+
+{-| Get the value associated with a key. Works as `Dict.get`.
+-}
+get : Pid -> Logoot -> Maybe PidContent
+get = Dict.get <<. toDict
+
+{-| Determine the number of key-value pairs in the `Logoot`. Works as `Dict.size`.
+-}
+size : Logoot -> Int
+size = Dict.size << toDict
 
 -- Dictionaries
 
@@ -284,7 +304,7 @@ comparePid pidl pidr =
 -- Private helpers
 
 degree : Pid -> Logoot -> Int
-degree pid (Logoot {cemetery}) = get pid cemetery |> Maybe.withDefault 0
+degree pid (Logoot {cemetery}) = Dict.get pid cemetery |> Maybe.withDefault 0
 
 setDegree : Pid -> Logoot -> Int -> Logoot
 setDegree pid (Logoot doc) d =
