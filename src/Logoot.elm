@@ -3,7 +3,7 @@ module Logoot exposing
   , empty, insert, remove, insertAfter, posBetween
   , isEmpty, member, get, size
   , toDict, fromDict
-  , keys, values, toList, fromList
+  , keys, values, toList, fromList, diffList, intersectList
   , sortPids, comparePid, comparePos
   )
 
@@ -46,7 +46,7 @@ There are a lot of missing pieces here, help us sending PRs to the GitHub [repos
 
 ## Lists
 
-@docs keys, values, toList, fromList
+@docs keys, values, toList, fromList, diffList, intersectList
 
 ## Sort and compare
 
@@ -262,20 +262,27 @@ fromList l =
     { content = Dict.fromList l
     , cemetery = Dict.empty}
 
+{-| Returns an association list `List (Pid, PidContent)` of the pairs that does
+not appear in the second `Logoot`.
+-}
+diffList : Logoot -> Logoot -> List (Pid, PidContent)
+diffList = Dict.toList <<< Dict.diff `on` toDict
+
+{-| Returns an association list `List (Pid, PidContent)` of the pairs that appears
+in the second `Logoot`, preference is given to values in the first `Logoot`.
+-}
+intersectList : Logoot -> Logoot -> List (Pid, PidContent)
+intersectList = Dict.toList <<< Dict.intersect `on` toDict
+
 -- Transform
+
+-- Does it makes sense to open the `Logoot` this way?
 
 -- TODO: map
 -- TODO: foldl
 -- TODO: foldr
 -- TODO: filter
 -- TODO: partition
-
--- Combine
-
--- TODO: union
--- TODO: intersect
--- TODO: diff
--- TODO: merge
 
 -- Sort and Compare
 
