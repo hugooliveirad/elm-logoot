@@ -7,6 +7,15 @@ import Dict
 import Fuzz as F
 import Logoot exposing (..)
 
+maxInt : Int
+maxInt = 32000
+
+firstPid : Pid
+firstPid = ([(0,0)],0)
+
+lastPid : Pid
+lastPid = ([(maxInt,0)],0)
+
 on : (b -> b -> c) -> (a -> b) -> a -> a -> c
 on f g a b = f (g a) (g b)
 
@@ -46,7 +55,7 @@ applyOps = List.foldl applyOpTuple |> flip
 uncurry3 f (a, b, c) = f a b c
 applyOpTuple = uncurry3 applyOp
 
-applyOp : String -> Pid -> PidContent -> Doc -> Doc
+applyOp : String -> Pid -> PidContent -> Logoot -> Logoot
 applyOp op =
   case op of
     "insert" -> insert
@@ -70,7 +79,7 @@ all =
           \() ->
             let
               result = empty |> insert pids.small "hey!" |> toDict
-              expected = Dict.fromList [ (initialPid, ""), (pids.small, "hey!"), (lastPid, "") ]
+              expected = Dict.fromList [ (firstPid, ""), (pids.small, "hey!"), (lastPid, "") ]
             in
               Expect.equal result expected
       , describe "comparePid"
