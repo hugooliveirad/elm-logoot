@@ -99,9 +99,9 @@ lastPid = ([(maxInt,0)],0)
 
 -- Build
 
-{-| Return an empty Logoot.
+{-| Return an empty `Logoot`.
 
-An empty Logoot come with the first and last `Pid` in place. They should not be removed.
+An empty `Logoot` come with the first and last `Pid` in place. They should not be removed.
 
     toDict empty == Dict.fromList
       [ (([(0,0)],0), "")
@@ -116,7 +116,7 @@ empty =
     }
 
 
-{-| Insert a key in a Logoot.
+{-| Insert a key in a `Logoot`.
 
 This works like `Dict.insert` but with a `Logoot`.
 
@@ -124,7 +124,7 @@ This works like `Dict.insert` but with a `Logoot`.
 
 Unlike `Dict.insert`, `insert` is commutative with `remove`,
 making it possible to insert and remove keys in any order and
-end up with the same Logoot.
+end up with the same `Logoot`.
 -}
 insert : Pid -> PidContent -> Logoot -> Logoot
 insert pid content (Logoot doc) =
@@ -136,7 +136,7 @@ insert pid content (Logoot doc) =
     then Logoot doc
     else setDegree pid d dg
 
-{-| Remove a key in a Logoot.
+{-| Remove a key in a `Logoot`.
 
 This works like `Dict.remove` but with a `Logoot`.
 
@@ -149,7 +149,7 @@ a future `insert` of that key will not add it to the `Logoot`.
 
 Unlike `Dict.remove`, `remove` is commutative with `insert`,
 making it possible to insert and remove keys in any order and
-end up with the same Logoot.
+end up with the same `Logoot`.
 -}
 remove : Pid -> PidContent -> Logoot -> Logoot
 remove pid content (Logoot doc) =
@@ -157,7 +157,7 @@ remove pid content (Logoot doc) =
   then Logoot { doc | content = Dict.remove pid doc.content}
   else setDegree pid (Logoot doc) (degree pid (Logoot doc) - 1)
 
-{-| Insert PidContent that will come after Pid when Logoot is sorted.
+{-| Insert `PidContent` that will come after `Pid` when `Logoot` is sorted.
 -}
 insertAfter : Site -> Clock -> PidContent -> Pid -> Logoot -> Logoot
 insertAfter site clock content pid  doc =
@@ -171,7 +171,7 @@ insertAfter site clock content pid  doc =
       Just p -> insert p content doc
       Nothing -> doc
 
-{-| Generate Positions between two Positions.
+{-| Generate `Positions` between two `Positions`.
 -}
 posBetween : Site -> Positions -> Positions -> Positions
 posBetween site posl posr =
@@ -204,7 +204,7 @@ posBetween site posl posr =
 
 -- Dictionaries
 
-{-| Convert a Logoot into a Dict for easier usage.
+{-| Convert a `Logoot` into a `Dict` for easier usage.
 -}
 toDict : Logoot -> Dict Pid PidContent
 toDict (Logoot {content}) = content
@@ -213,17 +213,17 @@ toDict (Logoot {content}) = content
 
 -- Lists
 
-{-| Get all of the keys in a Logoot, sorted from lowest to highest.
+{-| Get all of the keys in a `Logoot`, sorted from lowest to highest.
 -}
 keys : Logoot -> List Pid
 keys = List.map fst << toList
 
-{-| Get all of the values in a Logoot, in the order of their keys.
+{-| Get all of the values in a `Logoot`, in the order of their keys.
 -}
 values : Logoot -> List PidContent
 values = List.map snd << toList
 
-{-| Convert a Logoot into a sorted association list of pid-pidcontent pairs.
+{-| Convert a `Logoot` into a sorted association list of `Pid`-`PidContent` pairs.
 -}
 toList : Logoot -> List (Pid, PidContent)
 toList = sortWith (comparePid `on` fst) << Dict.toList << toDict
@@ -247,12 +247,12 @@ toList = sortWith (comparePid `on` fst) << Dict.toList << toDict
 
 -- Sort and Compare
 
-{-| -}
+{-| Sort a `List Pid` using `comparePid`. -}
 sortPids : List Pid -> List Pid
 sortPids pids =
   sortWith comparePid pids
 
-{-| -}
+{-| Compare two `Positions`. -}
 comparePos : Positions -> Positions -> Order
 comparePos posl posr =
   let
@@ -262,7 +262,7 @@ comparePos posl posr =
       [] -> compare (length posl) (length posr)
       res -> Maybe.withDefault EQ (head res)
 
-{-| -}
+{-| Compare two `Pid`s -}
 comparePid : Pid -> Pid -> Order
 comparePid pidl pidr =
   case comparePos (fst pidl) (fst pidr) of
