@@ -1,8 +1,8 @@
 module Logoot exposing
   ( Logoot, Pid, PidContent, Positions, Position, Line, Site, Clock
   , empty, insert, remove, insertAfter, posBetween
-  , toDict
-  , keys, values, toList
+  , toDict, fromDict
+  , keys, values, toList, fromList
   , sortPids, comparePid, comparePos
   )
 
@@ -37,11 +37,11 @@ There are a lot of missing pieces here, help us sending PRs to the GitHub [repos
 
 ## Dictionaries
 
-@docs toDict
+@docs toDict, fromDict
 
 ## Lists
 
-@docs keys, values, toList
+@docs keys, values, toList, fromList
 
 ## Sort and compare
 
@@ -204,12 +204,18 @@ posBetween site posl posr =
 
 -- Dictionaries
 
-{-| Convert a `Logoot` into a `Dict` for easier usage.
+{-| Convert a `Logoot` into a `Dict Pid PidContent` for easier usage.
 -}
 toDict : Logoot -> Dict Pid PidContent
 toDict (Logoot {content}) = content
 
--- TODO: fromDict
+{-| Convert a `Dict Pid PidContent` into a `Logoot`.
+-}
+fromDict : Dict Pid PidContent -> Logoot
+fromDict d =
+  Logoot
+    { content = d
+    , cemetery = Dict.empty}
 
 -- Lists
 
@@ -223,12 +229,18 @@ keys = List.map fst << toList
 values : Logoot -> List PidContent
 values = List.map snd << toList
 
-{-| Convert a `Logoot` into a sorted association list of `Pid`-`PidContent` pairs.
+{-| Convert a `Logoot` into a sorted association list `List (Pid, PidContent)`.
 -}
 toList : Logoot -> List (Pid, PidContent)
 toList = sortWith (comparePid `on` fst) << Dict.toList << toDict
 
--- TODO: fromList
+{-| Convert an association list `List (Pid, PidContent)` into a `Logoot`.
+-}
+fromList : List (Pid, PidContent) -> Logoot
+fromList l =
+  Logoot
+    { content = Dict.fromList l
+    , cemetery = Dict.empty}
 
 -- Transform
 
