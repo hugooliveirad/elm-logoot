@@ -7,6 +7,9 @@ import Dict
 import Fuzz as F
 import Logoot exposing (..)
 
+on : (b -> b -> c) -> (a -> b) -> a -> a -> c
+on f g a b = f (g a) (g b)
+
 pids =
   { small         = ([(1, 1)], 0)
   , smallTwo      = ([(1, 1), (2, 2)], 0)
@@ -18,28 +21,45 @@ pids =
   , bigTwoSmaller = ([(30, 5), (35, 6)], 0)
   }
 
-pidBetweenTwo p1 p2 = pidBetween p1 p2 2 2
+posBetweenTwo = posBetween 2
 
 toNonEmptyPositions a = case a of
-  [] -> [(0, 0)]
+  [] -> [(1, 0)]
   _ -> a
 
-natF = F.map abs F.int
+uniqueOps = Dict.values << List.foldl (\(o,p,c) -> Dict.insert p (o,p,c)) Dict.empty
+
+natF = F.intRange 1 100
 lineF = natF
 siteF = natF
 clockF = natF
 pidContentF = F.string
 positionF = F.tuple (lineF, siteF)
-positionsF = F.map toNonEmptyPositions (F.list positionF)
+positionsF = F.list positionF |> F.map toNonEmptyPositions 
 pidF = F.tuple (positionsF, clockF)
 
+opF = F.frequencyOrCrash [ (1, F.constant "insert"), (1, F.constant "remove") ]
+opsF = F.list (F.tuple3 (opF, pidF, pidContentF)) |> F.map uniqueOps
+
+applyOps = List.foldl applyOpTuple |> flip
+
+uncurry3 f (a, b, c) = f a b c
+applyOpTuple = uncurry3 applyOp
+
+applyOp : String -> Pid -> PidContent -> Doc -> Doc
+applyOp op =
+  case op of
+    "insert" -> insert
+    "remove" -> remove
+    _ -> \_ _ d -> d
+
 bigger p1 p2 =
-  case comparePid p1 p2 of
+  case comparePos p1 p2 of
     GT -> p1
     _ -> p2
 
 smaller p1 p2 =
-  case comparePid p1 p2 of
+  case comparePos p1 p2 of
     LT -> p1
     _ -> p2
 
@@ -82,18 +102,47 @@ all =
         ]
       , describe "pidBetween"
         [ test "simple position between" <|
-            \() -> Expect.equal (pidBetweenTwo ([(1, 1)], 0) ([(5, 1)], 0)) ([(2, 2)], 2)
+            \() -> Expect.equal (posBetween 2 [(1, 1)] [(5, 1)]) [(2, 2)]
         , test "simple position nothing between" <|
-            \() -> Expect.equal (pidBetweenTwo ([(1, 1)], 0) ([(2, 1)], 0)) ([(1, 1), (0, 2)], 2)
-        , fuzz2 pidF pidF "generates pid bigger than the left pid" <|
+            \() -> Expect.equal (posBetween 2 [(1, 1)] [(2, 1)]) [(1, 1), (0, 2)]
+        , fuzz2 positionsF positionsF "generates pos bigger than the left pos" <|
            \p1 p2 ->
              let
                sm = smaller p1 p2
                bg = bigger p1 p2
-               newPid = pidBetweenTwo sm bg
+               newPid = posBetween 2 sm bg
              in
-               newPid
-               |> comparePid sm
+               if p1 == p2 then Expect.pass
+               else newPid
+               |> comparePos sm
                |> Expect.equal LT
+        , fuzz2 positionsF positionsF "generates pos smaller than the right pos" <|
+           \p1 p2 ->
+             let
+               sm = smaller p1 p2
+               bg = bigger p1 p2
+               newPid = posBetween 2 sm bg
+             in
+               if p1 == p2 then Expect.pass
+               else newPid
+               |> comparePos bg
+               |> Expect.equal GT
+        ]
+      , describe "ops properties"
+        [ fuzz opsF "idempotent" <|
+          \ops ->
+            on Expect.equal Logoot.toDict (applyOps ops Logoot.empty) (applyOps ops Logoot.empty)
+        , fuzz opsF "commutative" <|
+          \ops ->
+            on Expect.equal Logoot.toDict
+              (applyOps ops Logoot.empty)
+              (applyOps (List.reverse ops) Logoot.empty)
+        , fuzz opsF "associative" <|
+          \ops ->
+            let
+              d1 = Logoot.empty |> applyOps ops |> applyOps (List.reverse ops)
+              d2 = Logoot.empty |> applyOps (List.reverse ops) |> applyOps ops
+            in
+              on Expect.equal Logoot.toDict d1 d2
         ]
       ]

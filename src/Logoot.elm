@@ -1,11 +1,17 @@
-module Logoot exposing (empty, insert, toDict, initialPid, lastPid, comparePid, pidBetween, padPositions)
+module Logoot exposing (
+  empty, insert, remove, toDict, initialPid, lastPid, comparePid, comparePos, posBetween, padPositions,
+  Doc, Cemetery, Content, Pid, PidContent, Positions, Position, Line, Site, Clock)
 
 {-|
   Simple Logoot implementation
 
 ## Parts API
 
-@docs empty, insert, toDict, initialPid, lastPid, comparePid, pidBetween, padPositions
+@docs empty, insert, remove, toDict, initialPid, lastPid, comparePid, comparePos, posBetween, padPositions
+
+## Types
+
+@docs Doc, Cemetery, Content, Pid, PidContent, Positions, Position, Line, Site, Clock
 -}
 
 import Dict as Dict exposing (..)
@@ -14,18 +20,28 @@ import List as List exposing (..)
 import Array as Array
 import String as String
 
+{-| -}
 type alias Doc =
   { cemetery : Cemetery
   , content : Content
   }
+{-| -}
 type alias Cemetery = Dict Pid Int
+{-| -}
 type alias Content = Dict Pid PidContent
+{-| -}
 type alias Pid = (Positions, Clock)
+{-| -}
 type alias PidContent = String
+{-| -}
 type alias Positions = List Position
+{-| -}
 type alias Position = (Line, Site)
+{-| -}
 type alias Line = Int
+{-| -}
 type alias Site = Int
+{-| -}
 type alias Clock = Int
 
 maxInt = 32000
@@ -46,16 +62,42 @@ empty =
   , content = Dict.fromList [ (initialPid, ""), (lastPid, "") ]
   }
 
+(<<<) : (c -> d) -> (a -> b -> c) -> a -> b -> d
+(<<<) f g a b = f (g a b)
+
+(<<.) : (a -> b -> c) -> (d -> b) -> a -> d -> c
+(<<.) f g a b = f a (g b)
+
+degree : Pid -> Doc -> Int
+degree = Maybe.withDefault 0 <<< get <<. .cemetery
+
+setDegree : Pid -> Doc -> Int -> Doc
+setDegree pid doc d =
+  if d == 0
+  then {doc | cemetery = Dict.remove pid doc.cemetery}
+  else {doc | cemetery = Dict.insert pid d doc.cemetery}
+
 {-| Insert a key in a Doc 
 -}
 insert : Pid -> PidContent -> Doc -> Doc
 insert pid content doc =
-  { doc | content = Dict.insert pid content doc.content}
+  let
+    dg = degree pid doc + 1
+    d = {doc | content = Dict.insert pid content doc.content}
+  in
+    if dg == 0
+    then doc
+    else setDegree pid d dg
 
-remove : Pid -> Doc -> Doc
-remove pid doc =
-  { doc | content = Dict.remove pid doc.content}
+{-| -}
+remove : Pid -> PidContent -> Doc -> Doc
+remove pid content doc =
+  if Dict.member pid doc.content
+  then { doc | content = Dict.remove pid doc.content}
+  else setDegree pid doc (degree pid doc - 1)
 
+{-| Compare two Postionstion
+-} 
 comparePos : Positions -> Positions -> Order
 comparePos posl posr =
   let
@@ -81,8 +123,8 @@ find pred = List.filter pred >> head
 
 {-| padding
 -}
-padPositions : (Positions, Positions) -> (Positions, Positions)
-padPositions (p1, p2) =
+padPositions : Positions -> Positions -> (Positions, Positions)
+padPositions p1 p2 =
   let
     l1 = length p1
     l2 = length p2
@@ -93,32 +135,29 @@ padPositions (p1, p2) =
       LT -> (p1 ++ (repeat diff (0,-1)), p2)
       GT -> (p1, p2 ++ (repeat diff (0,-1)))
 
-{-| Generate a Pid between two Pids.
-
-pidBetween ([(0,0),(0,3)],0) ([(0,0)],0) 2 2
-=> ([(0,0),(0,3),(0,2)])
-
-pidBetween ([(0,0),(0,0)],2) ([(0,0),(0,3)],0) 2 2
-=> ([(0,0),(0,0),(0,-1),(0,2)], 2)
+{-| Generate a Pos between two Pos.
 -}
-pidBetween : Pid -> Pid -> Site -> Clock -> Pid
-pidBetween (posl, _) (posr, _) site clock =
+posBetween : Site -> Positions -> Positions -> Positions
+posBetween site posl posr =
   let
-    comps = (posl, posr) |> padPositions |> uncurry zip
-    loop = List.foldl (\(p1, p2) (folded, acc) ->
-      if folded then (folded, acc)
-      else case compare (fst p1) (fst p2) of
-        EQ -> (False, acc ++ [p1])
-        LT -> if fst p1 + 1 < fst p2
-          then (True, acc ++ [(fst p1 + 1, site)])
-          else (True, posl ++ [(0, site)])
-        GT -> (True, acc ++ [p1, (0, site)])) (False, []) comps
-    pos = snd loop
-    newPost = if pos == posl
+    pos = (posl, posr) 
+      |> uncurry padPositions
+      |> uncurry zip
+      |> List.foldl (\(p1, p2) (folded, acc) ->
+        if folded then (folded, acc)
+        else case compare (fst p1) (fst p2) of
+          EQ -> (False, acc ++ [p1])
+          LT -> if fst p1 + 1 < fst p2
+            then (True, acc ++ [(fst p1 + 1, site)])
+            else (True, posl ++ [(0, site)])
+          GT -> (False, acc ++ [p1])) 
+        (False, [])
+       |> snd
+    newPos = if pos == posl
       then pos ++ [(0, site)]
       else pos
   in
-    (newPost, clock)
+    newPos
 
 sortPids : List Pid -> List Pid
 sortPids pids =
@@ -147,7 +186,7 @@ insertAfter pid site clock content doc =
   let
     leftRight = findLeftRight pid doc
     newPid = case leftRight of
-      (Just left, Just right) -> Just (pidBetween left right site clock)
+      (Just (posl, _), Just (posr, _)) -> Just (posBetween site posl posr, clock)
       _ -> Nothing
   in
     case newPid of
