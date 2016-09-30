@@ -237,13 +237,13 @@ fromDict d =
     { content = d
     , cemetery = Dict.empty}
 
-{-| Returns an association list `List (Pid, PidContent)` of the pairs that does
+{-| Returns a `Dict Pid PidContent` of the pairs that does
 not appear in the second `Logoot`.
 -}
 diffDict : Logoot -> Logoot -> Dict Pid PidContent
 diffDict = Dict.diff `on` toDict
 
-{-| Returns an association list `List (Pid, PidContent)` of the pairs that appears
+{-| Returns `Dict Pid PidContent` of the pairs that appears
 in the second `Logoot`, preference is given to values in the first `Logoot`.
 -}
 intersectDict : Logoot -> Logoot -> Dict Pid PidContent
