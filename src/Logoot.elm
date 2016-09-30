@@ -237,6 +237,18 @@ fromDict d =
     { content = d
     , cemetery = Dict.empty}
 
+{-| Returns an association list `List (Pid, PidContent)` of the pairs that does
+not appear in the second `Logoot`.
+-}
+diffDict : Logoot -> Logoot -> Dict Pid PidContent
+diffDict = Dict.diff `on` toDict
+
+{-| Returns an association list `List (Pid, PidContent)` of the pairs that appears
+in the second `Logoot`, preference is given to values in the first `Logoot`.
+-}
+intersectDict : Logoot -> Logoot -> Dict Pid PidContent
+intersectDict = Dict.intersect `on` toDict
+
 -- Lists
 
 {-| Get all of the keys in a `Logoot`, sorted from lowest to highest.
@@ -266,13 +278,13 @@ fromList l =
 not appear in the second `Logoot`.
 -}
 diffList : Logoot -> Logoot -> List (Pid, PidContent)
-diffList = Dict.toList <<< Dict.diff `on` toDict
+diffList = Dict.toList <<< diffDict
 
 {-| Returns an association list `List (Pid, PidContent)` of the pairs that appears
 in the second `Logoot`, preference is given to values in the first `Logoot`.
 -}
 intersectList : Logoot -> Logoot -> List (Pid, PidContent)
-intersectList = Dict.toList <<< Dict.intersect `on` toDict
+intersectList = Dict.toList <<< intersectDict
 
 -- Transform
 
