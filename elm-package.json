@@ -1,5 +1,5 @@
 {
-    "version": "0.1.0",
+    "version": "1.0.0",
     "summary": "Simple Logoot implementation",
     "repository": "https://github.com/hugobessaa/elm-logoot.git",
     "license": "MIT",
@@ -7,7 +7,7 @@
         "src"
     ],
     "exposed-modules": [
-      "Logoot"
+        "Logoot"
     ],
     "dependencies": {
         "elm-lang/core": "4.0.1 <= v < 5.0.0"
