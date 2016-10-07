@@ -66,7 +66,7 @@ import String as String
 
 `Logoot` implementation details are hidden from the public API.
 
-You should use the provided functions to transform a `Logoot`.
+You should use the provided functions to create and transform a `Logoot`.
 -}
 type Logoot =
   Logoot
@@ -75,7 +75,11 @@ type Logoot =
     }
 type alias Cemetery = Dict Pid Int
 {-| -}
-type alias Content = Dict Pid PidContent
+type alias Content = 
+  { first : (Pid, PidContent)
+  , intermediate : Dict Pid PidContent
+  , last : (Pid, PidContent)
+  }
 {-| -}
 type alias Pid = (Positions, Clock)
 {-| -}
@@ -117,7 +121,11 @@ empty : Logoot
 empty =
   Logoot
     { cemetery = Dict.empty
-    , content = Dict.fromList [ (firstPid, ""), (lastPid, "") ]
+    , content =
+      { first = (firstPid, "")
+      , intermediate = Dict.empty
+      , last = (lastPid, "")
+      }
     }
 
 
@@ -132,10 +140,12 @@ making it possible to insert and remove keys in any order and
 end up with the same `Logoot`.
 -}
 insert : Pid -> PidContent -> Logoot -> Logoot
-insert pid content (Logoot doc) =
+insert pid pidcontent (Logoot doc as logoot) =
   let
     dg = degree pid (Logoot doc) + 1
-    d = Logoot {doc | content = Dict.insert pid content doc.content}
+    content = doc.content
+    intermediate = content.intermediate
+    d = Logoot {doc | content = { content | intermediate = intermediate |> Dict.insert pid pidcontent } }
   in
     if dg == 0
     then Logoot doc
@@ -157,10 +167,14 @@ making it possible to insert and remove keys in any order and
 end up with the same `Logoot`.
 -}
 remove : Pid -> PidContent -> Logoot -> Logoot
-remove pid content (Logoot doc) =
-  if Dict.member pid doc.content
-  then Logoot { doc | content = Dict.remove pid doc.content}
-  else setDegree pid (Logoot doc) (degree pid (Logoot doc) - 1)
+remove pid pidcontent (Logoot doc as logoot) =
+  let
+    content = doc.content
+    intermediate = content.intermediate
+  in
+    if toDict logoot |> Dict.member pid 
+    then Logoot { doc | content = { content | intermediate = intermediate |> Dict.remove pid } }
+    else setDegree pid logoot (degree pid logoot - 1)
 
 {-| Insert `PidContent` that will come after `Pid` when `Logoot` is sorted.
 -}
@@ -227,15 +241,12 @@ size = Dict.size << toDict
 {-| Convert a `Logoot` into a `Dict Pid PidContent` for easier usage.
 -}
 toDict : Logoot -> Dict Pid PidContent
-toDict (Logoot {content}) = content
+toDict = Dict.fromList << toList
 
 {-| Convert a `Dict Pid PidContent` into a `Logoot`.
 -}
 fromDict : Dict Pid PidContent -> Logoot
-fromDict d =
-  Logoot
-    { content = d
-    , cemetery = Dict.empty}
+fromDict = fromList << Dict.toList
 
 {-| Returns a `Dict Pid PidContent` of the pairs that does
 not appear in the second `Logoot`.
@@ -264,15 +275,14 @@ values = List.map snd << toList
 {-| Convert a `Logoot` into a sorted association list `List (Pid, PidContent)`.
 -}
 toList : Logoot -> List (Pid, PidContent)
-toList = sortWith (comparePid `on` fst) << Dict.toList << toDict
+toList (Logoot {content}) =
+  [content.first] ++ Dict.toList content.intermediate ++ [content.last]
+    |> sortWith (comparePid `on` fst)
 
 {-| Convert an association list `List (Pid, PidContent)` into a `Logoot`.
 -}
 fromList : List (Pid, PidContent) -> Logoot
-fromList l =
-  Logoot
-    { content = Dict.fromList l
-    , cemetery = Dict.empty}
+fromList = empty |> List.foldl (uncurry insert)
 
 {-| Returns an association list `List (Pid, PidContent)` of the pairs that does
 not appear in the second `Logoot`.
@@ -345,11 +355,11 @@ padPositions p1 p2 =
       GT -> (p1, p2 ++ (repeat diff (0,-1)))
 
 findLeftRight : Pid -> Logoot -> (Maybe Pid, Maybe Pid)
-findLeftRight pid (Logoot {content}) =
+findLeftRight pid logoot =
   let
-    pids = content
-      |> Dict.keys
-      |> sortPids
+    pids = logoot
+      |> toList
+      |> List.map fst
       |> Array.fromList
     indexed = pids
       |> Array.toIndexedList
