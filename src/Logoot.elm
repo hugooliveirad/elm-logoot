@@ -7,24 +7,15 @@ module Logoot exposing
   , sortPids, comparePid, comparePos
   )
 
-{-| Simple Logoot implementation
-
-Logoot is a [Conflict-free Replicated Data Type][crdt] (CRDT) created to be used by
-distributed systems that want to achieve Strong Eventual Consistency (SEC).
-
-[crdt]: https://en.wikipedia.org/wiki/Conflict-free_replicated_data_type
+{-| Simple Logoot implementation.
 
 Insert and remove operations in Logoot are idempotent, commutative and associative.
 This means two replicas can exchange operations made in their local Logoot over a
 network without having to garantee the order of messages, enabling their use with
 distributed networks such as P2P.
 
-This is an implementation of [Logoot-undo][logoot] propose by Stéphane Weiss,
-Pascal Urso and Pascal Molli. It still lacks support for undo operations.
-
-[logoot]: https://pdfs.semanticscholar.org/75e4/5cd9cae6d0da1faeae11732e39a4c1c7a17b.pdf
-
-There are a lot of missing pieces here, help us sending PRs to the GitHub [repository]!
+Here are various functions to deal with the Logoot document. There are a lot of
+missing pieces here, help us sending PRs to the GitHub [repository]!
 
 [repository]: https://github.com/hugobessaa/elm-logoot
 
@@ -110,11 +101,11 @@ lastPid = ([(maxInt,0)],0)
 
 {-| Return an empty `Logoot`.
 
-An empty `Logoot` come with the first and last `Pid` in place. They should not be removed.
+An empty `Logoot` come with the first and last `Pid` in place. They can not be modified.
 
     toDict empty == Dict.fromList
       [ (([(0,0)],0), "")
-      , (([(maxInt,0)],0), "") 
+      , (([(32000,0)],0), "") 
       ]
 -}
 empty : Logoot
