@@ -141,11 +141,13 @@ end up with the same `Logoot`.
 -}
 insert : Pid -> PidContent -> Logoot -> Logoot
 insert pid pidcontent (Logoot doc as logoot) =
-  let
+  if (pid == firstPid) || (pid == lastPid) then logoot
+  else let
     dg = degree pid (Logoot doc) + 1
     content = doc.content
     intermediate = content.intermediate
-    d = Logoot {doc | content = { content | intermediate = intermediate |> Dict.insert pid pidcontent } }
+    d = Logoot {doc | content = 
+      { content | intermediate = intermediate |> Dict.insert pid pidcontent } }
   in
     if dg == 0
     then Logoot doc
@@ -168,7 +170,8 @@ end up with the same `Logoot`.
 -}
 remove : Pid -> PidContent -> Logoot -> Logoot
 remove pid pidcontent (Logoot doc as logoot) =
-  let
+  if (pid == firstPid) || (pid == lastPid) then logoot
+  else let
     content = doc.content
     intermediate = content.intermediate
   in
