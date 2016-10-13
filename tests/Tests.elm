@@ -119,7 +119,7 @@ all =
             [ fuzz opsF "idempotent" <|
                 \ops ->
                     on Expect.equal
-                        Logoot.toDict
+                        Logoot.toList
                         (applyOps ops Logoot.empty)
                         (applyOps ops Logoot.empty)
             , fuzz opsF "commutative" <|
