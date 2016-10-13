@@ -28,22 +28,6 @@ on f g a b =
     f (g a) (g b)
 
 
-pids =
-    { small = ( [ ( 1, 1 ) ], 0 )
-    , smallTwo = ( [ ( 1, 1 ), ( 2, 2 ) ], 0 )
-    , medium = ( [ ( 2, 2 ) ], 0 )
-    , mediumTwo = ( [ ( 2, 2 ), ( 3, 4 ) ], 0 )
-    , mediumMany = ( [ ( 2, 2 ), ( 3, 4 ), ( 5, 6 ), ( 7, 8 ) ], 0 )
-    , big = ( [ ( 30, 5 ) ], 0 )
-    , bigTwo = ( [ ( 30, 5 ), ( 40, 7 ) ], 0 )
-    , bigTwoSmaller = ( [ ( 30, 5 ), ( 35, 6 ) ], 0 )
-    }
-
-
-posBetweenTwo =
-    posBetween 2
-
-
 toNonEmptyPositions a =
     case a of
         [] ->
@@ -128,22 +112,32 @@ all =
         [ describe "ops properties"
             [ fuzz opsF "idempotent" <|
                 \ops ->
-                    on Expect.equal Logoot.toDict (applyOps ops Logoot.empty) (applyOps ops Logoot.empty)
+                    on Expect.equal
+                        Logoot.toDict
+                        (applyOps ops Logoot.empty)
+                        (applyOps ops Logoot.empty)
             , fuzz opsF "commutative" <|
                 \ops ->
                     on Expect.equal
-                        Logoot.toDict
+                        Logoot.toList
                         (applyOps ops Logoot.empty)
                         (applyOps (List.reverse ops) Logoot.empty)
             , fuzz opsF "associative" <|
                 \ops ->
-                    let
-                        d1 =
-                            Logoot.empty |> applyOps ops |> applyOps (List.reverse ops)
-
-                        d2 =
-                            Logoot.empty |> applyOps (List.reverse ops) |> applyOps ops
-                    in
-                        on Expect.equal Logoot.toDict d1 d2
+                    on Expect.equal
+                        Logoot.toList
+                        (Logoot.empty |> applyOps (List.reverse ops) |> applyOps ops)
+                        (Logoot.empty |> applyOps ops |> applyOps (List.reverse ops))
+            ]
+        , describe "insertAfter properties"
+            [ fuzz pidF "always after" <|
+                \pid ->
+                    empty
+                        |> insert pid "hel"
+                        |> insertAfter 2 2 pid "lo!"
+                        |> toList
+                        |> List.map snd
+                        |> String.join ""
+                        |> Expect.equal "hello!"
             ]
         ]
