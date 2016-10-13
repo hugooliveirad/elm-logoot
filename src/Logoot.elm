@@ -53,10 +53,10 @@ future docs isEmpty, member, get, size
 
 ## Lists
 
-It is not recommended to change a `Logoot` by using those functions.
+It is not recommended to change a `Logoot a` by using those functions.
 
-When you transform a `Logoot` into a `List (Pid, PidContent)` and back, it loses the
-commutative context. This may make your `Logoot` out-of-sync with other replicas.
+When you transform a `Logoot a` into a `List (Pid, a)` and back, it loses the
+commutative context. This may make your `Logoot a` out-of-sync with other replicas.
 
 Use those functions only at the boundaries of your app, to transform, display, and create.
 
@@ -77,7 +77,7 @@ import String as String
 
 `Logoot` implementation details are hidden from the public API.
 
-You should use the provided functions to create and transform a `Logoot`.
+You should use the provided functions to create and transform a `Logoot a`.
 -}
 type Logoot a
     = Logoot
@@ -145,11 +145,16 @@ lastPid =
 -- Build
 
 
-{-| Return an empty `Logoot`.
+{-| Return an empty `Logoot a`.
 
-An empty `Logoot` come with the first and last `Pid` in place. They can not be modified.
+An empty `Logoot a` come with the first and last `Pid` in place. They can not be modified.
 
-    toDict empty == Dict.fromList
+You should provide an empty representation of your data type. This is used as the content
+for the first and last `Pid`
+
+To create a `Logoot String` you could use:
+
+    toDict empty "" == Dict.fromList
       [ (([(0,0)],0), "")
       , (([(32000,0)],0), "")
       ]
@@ -167,15 +172,15 @@ empty v =
         }
 
 
-{-| Insert a key in a `Logoot`.
+{-| Insert a key in a `Logoot a`.
 
-This works like `Dict.insert` but with a `Logoot`.
+This works like `Dict.insert` but with a `Logoot a`.
 
-    empty |> insert ([(1, 3)], 15) "it works"
+    empty "" |> insert ([(1, 3)], 15) "it works"
 
 Unlike `Dict.insert`, `insert` is commutative with `remove`,
 making it possible to insert and remove keys in any order and
-end up with the same `Logoot`.
+end up with the same `Logoot a`.
 -}
 insert : Pid -> a -> Logoot a -> Logoot a
 insert pid pidcontent ((Logoot t doc) as logoot) =
@@ -209,20 +214,20 @@ insert pid pidcontent ((Logoot t doc) as logoot) =
                     setDegree pid d dg
 
 
-{-| Remove a key in a `Logoot`.
+{-| Remove a key in a `Logoot a`.
 
-This works like `Dict.remove` but with a `Logoot`.
+This works like `Dict.remove` but with a `Logoot a`.
 
-    empty
+    empty ""
       |> insert ([(1, 3)], 15) "it works"
       |> remove ([(1, 3)], 15) "it works"
 
-When you remove a key that isn't a member of `Logoot`, it will make sure
-a future `insert` of that key will not add it to the `Logoot`.
+When you remove a key that isn't a member of `Logoot a`, it will make sure
+a future `insert` of that key will not add it to the `Logoot a`.
 
 Unlike `Dict.remove`, `remove` is commutative with `insert`,
 making it possible to insert and remove keys in any order and
-end up with the same `Logoot`.
+end up with the same `Logoot a`.
 -}
 remove : Pid -> a -> Logoot a -> Logoot a
 remove pid pidcontent ((Logoot t doc) as logoot) =
@@ -242,7 +247,7 @@ remove pid pidcontent ((Logoot t doc) as logoot) =
                 setDegree pid logoot (degree pid logoot - 1) |> sortLogoot
 
 
-{-| Insert `PidContent` that will come after `Pid` when `Logoot` is sorted.
+{-| Insert a content that will come after `Pid` when `Logoot a` is sorted.
 -}
 insertAfter : Site -> Clock -> Pid -> a -> Logoot a -> Logoot a
 insertAfter site clock pid content logoot =
@@ -266,8 +271,6 @@ insertAfter site clock pid content logoot =
                 logoot
 
 
-{-| Generate `Positions` between two `Positions`.
--}
 posBetween : Site -> Positions -> Positions -> Positions
 posBetween site posl posr =
     let
@@ -307,48 +310,57 @@ posBetween site posl posr =
 
 
 -- Query
-{- Determine if a key is in a `Logoot`. Works as `Dict.member`.
-   member : Pid -> Logoot a -> Bool
-   member =
-       Dict.member <<. toDict
+
+
+{-| Determine if a key is in a `Logoot a`. Works as `Dict.member`.
 -}
-{- Get the value associated with a key. Works as `Dict.get`.
-   get : Pid -> Logoot a -> Maybe a
-   get =
-       Dict.get <<. toDict
+member : Pid -> Logoot a -> Bool
+member =
+    Dict.member <<. toDict
+
+
+{-| Get the value associated with a key. Works as `Dict.get`.
 -}
-{- Determine the number of key-value pairs in the `Logoot`. Works as `Dict.size`.
-   size : Logoot -> Int
-   size =
-       Dict.size << toDict
+get : Pid -> Logoot a -> Maybe a
+get =
+    Dict.get <<. toDict
+
+
+{-| Determine the number of key-value pairs in the `Logoot a`. Works as `Dict.size`.
 -}
+size : Logoot a -> Int
+size =
+    Dict.size << toDict
+
+
+
 -- Dictionaries
 
 
-{-| Convert a `Logoot` into a `Dict Pid PidContent` for easier usage.
+{-| Convert a `Logoot a` into a `Dict Pid a` for easier usage.
 -}
 toDict : Logoot a -> Dict Pid a
 toDict =
     Dict.fromList << toList
 
 
-{-| Convert a `Dict Pid PidContent` into a `Logoot`.
+{-| Convert a `Dict Pid a` into a `Logoot a`.
 -}
 fromDict : a -> Dict Pid a -> Logoot a
 fromDict v =
     fromList v << Dict.toList
 
 
-{-| Returns a `Dict Pid PidContent` of the pairs that does
-   not appear in the second `Logoot`.
+{-| Returns a `Dict Pid a` of the pairs that does
+   not appear in the second `Logoot a`.
 -}
 diffDict : Logoot a -> Logoot a -> Dict Pid a
 diffDict =
     Dict.diff `on` toDict
 
 
-{-| Returns `Dict Pid PidContent` of the pairs that appears
-   in the second `Logoot`, preference is given to values in the first `Logoot`.
+{-| Returns `Dict Pid a` of the pairs that appears
+   in the second `Logoot a`, preference is given to values in the first `Logoot a`.
 -}
 intersectDict : Logoot a -> Logoot a -> Dict Pid a
 intersectDict =
@@ -359,44 +371,44 @@ intersectDict =
 -- Lists
 
 
-{-| Get all of the keys in a `Logoot`, sorted from lowest to highest.
+{-| Get all of the keys in a `Logoot a`, sorted from lowest to highest.
 -}
 keys : Logoot a -> List Pid
 keys =
     List.map fst << toList
 
 
-{-| Get all of the values in a `Logoot`, in the order of their keys.
+{-| Get all of the values in a `Logoot a`, in the order of their keys.
 -}
 values : Logoot a -> List a
 values =
     List.map snd << toList
 
 
-{-| Convert a `Logoot` into a sorted association list `List (Pid, PidContent)`.
+{-| Convert a `Logoot a` into a sorted association list `List (Pid, a)`.
 -}
 toList : Logoot a -> List ( Pid, a )
 toList (Logoot _ { sorted }) =
     sorted
 
 
-{-| Convert an association list `List (Pid, PidContent)` into a `Logoot`.
+{-| Convert an association list `List (Pid, a)` into a `Logoot a`.
 -}
 fromList : a -> List ( Pid, a ) -> Logoot a
 fromList v =
     empty v |> List.foldl (uncurry insert)
 
 
-{-| Returns an association list `List (Pid, PidContent)` of the pairs that does
-   not appear in the second `Logoot`.
+{-| Returns an association list `List (Pid, a)` of the pairs that does
+   not appear in the second `Logoot a`.
 -}
 diffList : Logoot a -> Logoot a -> List ( Pid, a )
 diffList =
     Dict.toList <<< diffDict
 
 
-{-| Returns an association list `List (Pid, PidContent)` of the pairs that appears
-   in the second `Logoot`, preference is given to values in the first `Logoot`.
+{-| Returns an association list `List (Pid, a)` of the pairs that appears
+   in the second `Logoot a`, preference is given to values in the first `Logoot a`.
 -}
 intersectList : Logoot a -> Logoot a -> List ( Pid, a )
 intersectList =
