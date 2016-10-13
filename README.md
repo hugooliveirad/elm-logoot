@@ -16,7 +16,7 @@ Pascal Urso and Pascal Molli. It still lacks support for undo operations.
 [logoot]: https://pdfs.semanticscholar.org/75e4/5cd9cae6d0da1faeae11732e39a4c1c7a17b.pdf
 
 I'm using this for my graduation project, a [P2P collaborative editor][editor].
-Check it out!
+Check it out.
 
 [editor]: https://github.com/hugobessaa/editor
 
@@ -40,12 +40,12 @@ import Logoot exposing (empty, insert, toList)
 -- Will explain about a Pid below
 pid = ([(2, 3), 0])
 
-logoot1 = empty 
+logoot1 = empty ""
     |> insert pid "hey!" 
     |> remove pid "hey!" 
     |> toList
 
-logoot2 = empty
+logoot2 = empty ""
     |> remove pid "hey!"
     |> insert pid "hey!"
     |> toList
