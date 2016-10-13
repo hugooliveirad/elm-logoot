@@ -88,7 +88,6 @@ type alias Cemetery =
     Dict Pid Int
 
 
-{-| -}
 type alias Content =
     { first : ( Pid, PidContent )
     , intermediate : Dict Pid PidContent
