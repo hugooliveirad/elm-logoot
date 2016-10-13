@@ -8,6 +8,12 @@ import Fuzz as F
 import Logoot exposing (..)
 
 
+type Operation
+    = Insert
+    | Remove
+    | Noop
+
+
 maxInt : Int
 maxInt =
     32000
@@ -74,7 +80,7 @@ pidF =
 
 
 opF =
-    F.frequencyOrCrash [ ( 1, F.constant "insert" ), ( 1, F.constant "remove" ) ]
+    F.frequencyOrCrash [ ( 1, F.constant Insert ), ( 1, F.constant Remove ) ]
 
 
 opsF =
@@ -93,16 +99,16 @@ applyOpTuple =
     uncurry3 applyOp
 
 
-applyOp : String -> Pid -> PidContent -> Logoot -> Logoot
+applyOp : Operation -> Pid -> PidContent -> Logoot -> Logoot
 applyOp op =
     case op of
-        "insert" ->
+        Insert ->
             insert
 
-        "remove" ->
+        Remove ->
             remove
 
-        _ ->
+        Noop ->
             \_ _ d -> d
 
 
