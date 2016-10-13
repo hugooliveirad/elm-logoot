@@ -4,7 +4,6 @@ module Logoot exposing
   , isEmpty, member, get, size
   , toDict, fromDict
   , keys, values, toList, fromList, diffList, intersectList
-  , sortPids, comparePid, comparePos
   )
 
 {-| Simple Logoot implementation.
@@ -38,11 +37,6 @@ missing pieces here, help us sending PRs to the GitHub [repository]!
 ## Lists
 
 @docs keys, values, toList, fromList, diffList, intersectList
-
-## Sort and compare
-
-@docs sortPids, comparePid, comparePos
-
 -}
 
 import Dict as Dict exposing (..)
@@ -63,6 +57,7 @@ type Logoot =
   Logoot
     { cemetery : Cemetery
     , content : Content
+    , sorted : List (Pid, PidContent)
     }
 type alias Cemetery = Dict Pid Int
 {-| -}
@@ -117,6 +112,7 @@ empty =
       , intermediate = Dict.empty
       , last = (lastPid, "")
       }
+    , sorted = [(firstPid, ""), (lastPid, "")]
     }
 
 
@@ -134,15 +130,20 @@ insert : Pid -> PidContent -> Logoot -> Logoot
 insert pid pidcontent (Logoot doc as logoot) =
   if (pid == firstPid) || (pid == lastPid) then logoot
   else let
-    dg = degree pid (Logoot doc) + 1
-    content = doc.content
-    intermediate = content.intermediate
-    d = Logoot {doc | content = 
-      { content | intermediate = intermediate |> Dict.insert pid pidcontent } }
+    dg = degree pid logoot + 1
   in
     if dg == 0
-    then Logoot doc
-    else setDegree pid d dg
+    then logoot
+    else let
+      content = doc.content
+      intermediate = content.intermediate
+      newInter = intermediate |> Dict.insert pid pidcontent
+      d = Logoot {doc |
+        content = { content | intermediate = newInter }
+      } |> sortLogoot
+    in
+      setDegree pid d dg
+
 
 {-| Remove a key in a `Logoot`.
 
@@ -167,8 +168,8 @@ remove pid pidcontent (Logoot doc as logoot) =
     intermediate = content.intermediate
   in
     if toDict logoot |> Dict.member pid 
-    then Logoot { doc | content = { content | intermediate = intermediate |> Dict.remove pid } }
-    else setDegree pid logoot (degree pid logoot - 1)
+    then Logoot { doc | content = { content | intermediate = intermediate |> Dict.remove pid } } |> sortLogoot
+    else setDegree pid logoot (degree pid logoot - 1) |> sortLogoot
 
 {-| Insert `PidContent` that will come after `Pid` when `Logoot` is sorted.
 -}
@@ -269,9 +270,8 @@ values = List.map snd << toList
 {-| Convert a `Logoot` into a sorted association list `List (Pid, PidContent)`.
 -}
 toList : Logoot -> List (Pid, PidContent)
-toList (Logoot {content}) =
-  [content.first] ++ Dict.toList content.intermediate ++ [content.last]
-    |> sortWith (comparePid `on` fst)
+toList (Logoot {sorted}) = sorted
+
 
 {-| Convert an association list `List (Pid, PidContent)` into a `Logoot`.
 -}
@@ -300,14 +300,7 @@ intersectList = Dict.toList <<< intersectDict
 -- TODO: filter
 -- TODO: partition
 
--- Sort and Compare
-
-{-| Sort a `List Pid` using `comparePid`. -}
-sortPids : List Pid -> List Pid
-sortPids pids =
-  sortWith comparePid pids
-
-{-| Compare two `Positions`. -}
+-- Private helpers
 comparePos : Positions -> Positions -> Order
 comparePos posl posr =
   let
@@ -317,14 +310,11 @@ comparePos posl posr =
       [] -> compare (length posl) (length posr)
       res -> Maybe.withDefault EQ (head res)
 
-{-| Compare two `Pid`s -}
 comparePid : Pid -> Pid -> Order
 comparePid pidl pidr =
   case comparePos (fst pidl) (fst pidr) of
     EQ -> compare (snd pidl) (snd pidr)
     x -> x
-
--- Private helpers
 
 degree : Pid -> Logoot -> Int
 degree pid (Logoot {cemetery}) = Dict.get pid cemetery |> Maybe.withDefault 0
@@ -365,6 +355,11 @@ findLeftRight pid logoot =
     case index of
       Just i -> (Array.get i pids, Array.get (i+1) pids)
       Nothing -> (Nothing, Nothing)
+
+sortLogoot : Logoot -> Logoot
+sortLogoot (Logoot doc) =
+  Logoot {doc | 
+    sorted = [doc.content.first] ++ Dict.toList doc.content.intermediate ++ [doc.content.last] |> sortWith (comparePid `on` fst) }
 
 -- TODO: Move these helpers out of this file
 
