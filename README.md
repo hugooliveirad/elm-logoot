@@ -15,6 +15,11 @@ Pascal Urso and Pascal Molli. It still lacks support for undo operations.
 
 [logoot]: https://pdfs.semanticscholar.org/75e4/5cd9cae6d0da1faeae11732e39a4c1c7a17b.pdf
 
+I'm using this for my graduation project, a [P2P collaborative editor][editor].
+Check it out!
+
+[editor]: https://github.com/hugobessaa/editor
+
 ## Installing
 
 Run inside your project directory:
