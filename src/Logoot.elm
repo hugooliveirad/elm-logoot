@@ -2,7 +2,6 @@ module Logoot
     exposing
         ( Logoot
         , Pid
-        , PidContent
         , Positions
         , Position
         , Line
@@ -12,19 +11,16 @@ module Logoot
         , insert
         , remove
         , insertAfter
-        , posBetween
-        , isEmpty
-        , member
-        , get
-        , size
         , toDict
         , fromDict
+        , diffDict
+        , intersectDict
         , keys
         , values
         , toList
         , fromList
-        , diffList
         , intersectList
+        , diffList
         )
 
 {-| Simple Logoot implementation.
@@ -41,21 +37,28 @@ missing pieces here, help us sending PRs to the GitHub [repository]!
 
 ## Types
 
-@docs Logoot, Pid, PidContent, Positions, Position, Line, Site, Clock
+@docs Logoot, Pid, Positions, Position, Line, Site, Clock
 
 ## Build
 
-@docs empty, insert, remove, insertAfter, posBetween
+@docs empty, insert, remove, insertAfter
 
 ## Query
 
-@docs isEmpty, member, get, size
+future docs isEmpty, member, get, size
 
 ## Dictionaries
 
-@docs toDict, fromDict
+@docs toDict, fromDict, diffDict, intersectDict
 
 ## Lists
+
+It is not recommended to change a `Logoot` by using those functions.
+
+When you transform a `Logoot` into a `List (Pid, PidContent)` and back, it loses the
+commutative context. This may make your `Logoot` out-of-sync with other replicas.
+
+Use those functions only at the boundaries of your app, to transform, display, and create.
 
 @docs keys, values, toList, fromList, diffList, intersectList
 -}
@@ -76,33 +79,22 @@ import String as String
 
 You should use the provided functions to create and transform a `Logoot`.
 -}
-type Logoot
+type Logoot a
     = Logoot
-        { cemetery : Cemetery
-        , content : Content
-        , sorted : List ( Pid, PidContent )
+        a
+        { cemetery : Dict Pid Int
+        , content :
+            { first : ( Pid, a )
+            , intermediate : Dict Pid a
+            , last : ( Pid, a )
+            }
+        , sorted : List ( Pid, a )
         }
-
-
-type alias Cemetery =
-    Dict Pid Int
-
-
-type alias Content =
-    { first : ( Pid, PidContent )
-    , intermediate : Dict Pid PidContent
-    , last : ( Pid, PidContent )
-    }
 
 
 {-| -}
 type alias Pid =
     ( Positions, Clock )
-
-
-{-| -}
-type alias PidContent =
-    String
 
 
 {-| -}
@@ -162,16 +154,16 @@ An empty `Logoot` come with the first and last `Pid` in place. They can not be m
       , (([(32000,0)],0), "")
       ]
 -}
-empty : Logoot
-empty =
-    Logoot
+empty : a -> Logoot a
+empty v =
+    Logoot v
         { cemetery = Dict.empty
         , content =
-            { first = ( firstPid, "" )
+            { first = ( firstPid, v )
             , intermediate = Dict.empty
-            , last = ( lastPid, "" )
+            , last = ( lastPid, v )
             }
-        , sorted = [ ( firstPid, "" ), ( lastPid, "" ) ]
+        , sorted = [ ( firstPid, v ), ( lastPid, v ) ]
         }
 
 
@@ -185,8 +177,8 @@ Unlike `Dict.insert`, `insert` is commutative with `remove`,
 making it possible to insert and remove keys in any order and
 end up with the same `Logoot`.
 -}
-insert : Pid -> PidContent -> Logoot -> Logoot
-insert pid pidcontent ((Logoot doc) as logoot) =
+insert : Pid -> a -> Logoot a -> Logoot a
+insert pid pidcontent ((Logoot t doc) as logoot) =
     if (pid == firstPid) || (pid == lastPid) then
         logoot
     else
@@ -208,7 +200,7 @@ insert pid pidcontent ((Logoot doc) as logoot) =
                         intermediate |> Dict.insert pid pidcontent
 
                     d =
-                        Logoot
+                        Logoot t
                             { doc
                                 | content = { content | intermediate = newInter }
                             }
@@ -232,8 +224,8 @@ Unlike `Dict.remove`, `remove` is commutative with `insert`,
 making it possible to insert and remove keys in any order and
 end up with the same `Logoot`.
 -}
-remove : Pid -> PidContent -> Logoot -> Logoot
-remove pid pidcontent ((Logoot doc) as logoot) =
+remove : Pid -> a -> Logoot a -> Logoot a
+remove pid pidcontent ((Logoot t doc) as logoot) =
     if (pid == firstPid) || (pid == lastPid) then
         logoot
     else
@@ -245,18 +237,18 @@ remove pid pidcontent ((Logoot doc) as logoot) =
                 content.intermediate
         in
             if toDict logoot |> Dict.member pid then
-                Logoot { doc | content = { content | intermediate = intermediate |> Dict.remove pid } } |> sortLogoot
+                Logoot t { doc | content = { content | intermediate = intermediate |> Dict.remove pid } } |> sortLogoot
             else
                 setDegree pid logoot (degree pid logoot - 1) |> sortLogoot
 
 
 {-| Insert `PidContent` that will come after `Pid` when `Logoot` is sorted.
 -}
-insertAfter : Site -> Clock -> Pid -> PidContent -> Logoot -> Logoot
-insertAfter site clock pid content doc =
+insertAfter : Site -> Clock -> Pid -> a -> Logoot a -> Logoot a
+insertAfter site clock pid content logoot =
     let
         leftRight =
-            findLeftRight pid doc
+            findLeftRight pid logoot
 
         newPid =
             case leftRight of
@@ -268,10 +260,10 @@ insertAfter site clock pid content doc =
     in
         case newPid of
             Just p ->
-                insert p content doc
+                insert p content logoot
 
             Nothing ->
-                doc
+                logoot
 
 
 {-| Generate `Positions` between two `Positions`.
@@ -315,66 +307,50 @@ posBetween site posl posr =
 
 
 -- Query
-
-
-{-| Determine if a `Logoot` is empty. Works as `Dict.isEmpty`.
+{- Determine if a key is in a `Logoot`. Works as `Dict.member`.
+   member : Pid -> Logoot a -> Bool
+   member =
+       Dict.member <<. toDict
 -}
-isEmpty : Logoot -> Bool
-isEmpty =
-    Dict.isEmpty << toDict
-
-
-{-| Determine if a key is in a `Logoot`. Works as `Dict.member`.
+{- Get the value associated with a key. Works as `Dict.get`.
+   get : Pid -> Logoot a -> Maybe a
+   get =
+       Dict.get <<. toDict
 -}
-member : Pid -> Logoot -> Bool
-member =
-    Dict.member <<. toDict
-
-
-{-| Get the value associated with a key. Works as `Dict.get`.
+{- Determine the number of key-value pairs in the `Logoot`. Works as `Dict.size`.
+   size : Logoot -> Int
+   size =
+       Dict.size << toDict
 -}
-get : Pid -> Logoot -> Maybe PidContent
-get =
-    Dict.get <<. toDict
-
-
-{-| Determine the number of key-value pairs in the `Logoot`. Works as `Dict.size`.
--}
-size : Logoot -> Int
-size =
-    Dict.size << toDict
-
-
-
 -- Dictionaries
 
 
 {-| Convert a `Logoot` into a `Dict Pid PidContent` for easier usage.
 -}
-toDict : Logoot -> Dict Pid PidContent
+toDict : Logoot a -> Dict Pid a
 toDict =
     Dict.fromList << toList
 
 
 {-| Convert a `Dict Pid PidContent` into a `Logoot`.
 -}
-fromDict : Dict Pid PidContent -> Logoot
-fromDict =
-    fromList << Dict.toList
+fromDict : a -> Dict Pid a -> Logoot a
+fromDict v =
+    fromList v << Dict.toList
 
 
 {-| Returns a `Dict Pid PidContent` of the pairs that does
-not appear in the second `Logoot`.
+   not appear in the second `Logoot`.
 -}
-diffDict : Logoot -> Logoot -> Dict Pid PidContent
+diffDict : Logoot a -> Logoot a -> Dict Pid a
 diffDict =
     Dict.diff `on` toDict
 
 
 {-| Returns `Dict Pid PidContent` of the pairs that appears
-in the second `Logoot`, preference is given to values in the first `Logoot`.
+   in the second `Logoot`, preference is given to values in the first `Logoot`.
 -}
-intersectDict : Logoot -> Logoot -> Dict Pid PidContent
+intersectDict : Logoot a -> Logoot a -> Dict Pid a
 intersectDict =
     Dict.intersect `on` toDict
 
@@ -385,44 +361,44 @@ intersectDict =
 
 {-| Get all of the keys in a `Logoot`, sorted from lowest to highest.
 -}
-keys : Logoot -> List Pid
+keys : Logoot a -> List Pid
 keys =
     List.map fst << toList
 
 
 {-| Get all of the values in a `Logoot`, in the order of their keys.
 -}
-values : Logoot -> List PidContent
+values : Logoot a -> List a
 values =
     List.map snd << toList
 
 
 {-| Convert a `Logoot` into a sorted association list `List (Pid, PidContent)`.
 -}
-toList : Logoot -> List ( Pid, PidContent )
-toList (Logoot { sorted }) =
+toList : Logoot a -> List ( Pid, a )
+toList (Logoot _ { sorted }) =
     sorted
 
 
 {-| Convert an association list `List (Pid, PidContent)` into a `Logoot`.
 -}
-fromList : List ( Pid, PidContent ) -> Logoot
-fromList =
-    empty |> List.foldl (uncurry insert)
+fromList : a -> List ( Pid, a ) -> Logoot a
+fromList v =
+    empty v |> List.foldl (uncurry insert)
 
 
 {-| Returns an association list `List (Pid, PidContent)` of the pairs that does
-not appear in the second `Logoot`.
+   not appear in the second `Logoot`.
 -}
-diffList : Logoot -> Logoot -> List ( Pid, PidContent )
+diffList : Logoot a -> Logoot a -> List ( Pid, a )
 diffList =
     Dict.toList <<< diffDict
 
 
 {-| Returns an association list `List (Pid, PidContent)` of the pairs that appears
-in the second `Logoot`, preference is given to values in the first `Logoot`.
+   in the second `Logoot`, preference is given to values in the first `Logoot`.
 -}
-intersectList : Logoot -> Logoot -> List ( Pid, PidContent )
+intersectList : Logoot a -> Logoot a -> List ( Pid, a )
 intersectList =
     Dict.toList <<< intersectDict
 
@@ -462,14 +438,14 @@ comparePid pidl pidr =
             x
 
 
-degree : Pid -> Logoot -> Int
-degree pid (Logoot { cemetery }) =
+degree : Pid -> Logoot a -> Int
+degree pid (Logoot _ { cemetery }) =
     Dict.get pid cemetery |> Maybe.withDefault 0
 
 
-setDegree : Pid -> Logoot -> Int -> Logoot
-setDegree pid (Logoot doc) d =
-    Logoot <|
+setDegree : Pid -> Logoot a -> Int -> Logoot a
+setDegree pid (Logoot t doc) d =
+    Logoot t <|
         if d == 0 then
             { doc | cemetery = Dict.remove pid doc.cemetery }
         else
@@ -499,7 +475,7 @@ padPositions p1 p2 =
                 ( p1, p2 ++ (repeat diff ( 0, -1 )) )
 
 
-findLeftRight : Pid -> Logoot -> ( Maybe Pid, Maybe Pid )
+findLeftRight : Pid -> Logoot a -> ( Maybe Pid, Maybe Pid )
 findLeftRight pid logoot =
     let
         pids =
@@ -529,9 +505,9 @@ findLeftRight pid logoot =
                 ( Nothing, Nothing )
 
 
-sortLogoot : Logoot -> Logoot
-sortLogoot (Logoot doc) =
-    Logoot
+sortLogoot : Logoot a -> Logoot a
+sortLogoot (Logoot t doc) =
+    Logoot t
         { doc
             | sorted = [ doc.content.first ] ++ Dict.toList doc.content.intermediate ++ [ doc.content.last ] |> sortWith (comparePid `on` fst)
         }

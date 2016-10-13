@@ -99,7 +99,7 @@ applyOpTuple =
     uncurry3 applyOp
 
 
-applyOp : Operation -> Pid -> PidContent -> Logoot -> Logoot
+applyOp : Operation -> Pid -> a -> Logoot a -> Logoot a
 applyOp op =
     case op of
         Insert ->
@@ -120,25 +120,25 @@ all =
                 \ops ->
                     on Expect.equal
                         Logoot.toList
-                        (applyOps ops Logoot.empty)
-                        (applyOps ops Logoot.empty)
+                        (applyOps ops <| empty "")
+                        (applyOps ops <| empty "")
             , fuzz opsF "commutative" <|
                 \ops ->
                     on Expect.equal
                         Logoot.toList
-                        (applyOps ops Logoot.empty)
-                        (applyOps (List.reverse ops) Logoot.empty)
+                        (applyOps ops <| empty "")
+                        (applyOps (List.reverse ops) <| empty "")
             , fuzz opsF "associative" <|
                 \ops ->
                     on Expect.equal
-                        Logoot.toList
-                        (Logoot.empty |> applyOps (List.reverse ops) |> applyOps ops)
-                        (Logoot.empty |> applyOps ops |> applyOps (List.reverse ops))
+                        toList
+                        (empty "" |> applyOps (List.reverse ops) |> applyOps ops)
+                        (empty "" |> applyOps ops |> applyOps (List.reverse ops))
             ]
         , describe "insertAfter properties"
             [ fuzz pidF "always after" <|
                 \pid ->
-                    empty
+                    empty ""
                         |> insert pid "hel"
                         |> insertAfter 2 2 pid "lo!"
                         |> toList
