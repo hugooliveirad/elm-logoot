@@ -76,7 +76,7 @@ already have some major bumps planned as I experiment with the API, so beware.
   - A module full of helpers (`applyBatch`, `decodeBatch`, `encodeBatch`, …)
     and types (`Batch`, `Operation`, …) to make it easier to users to send
     their changes to another replicas
-- [ ] Make `Logoot` value type agnostic
+- [x] Make `Logoot` value type agnostic
   - Just like you can do with a `List`, I want to be able to store any value
     type inside a `Logoot`. The type would be something along `Logoot a`. Right
     now it only knows how to hold `String`.
