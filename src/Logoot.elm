@@ -253,8 +253,8 @@ remove pid pidcontent ((Logoot doc) as logoot) =
 
 {-| Insert `PidContent` that will come after `Pid` when `Logoot` is sorted.
 -}
-insertAfter : Site -> Clock -> PidContent -> Pid -> Logoot -> Logoot
-insertAfter site clock content pid doc =
+insertAfter : Site -> Clock -> Pid -> PidContent -> Logoot -> Logoot
+insertAfter site clock pid content doc =
     let
         leftRight =
             findLeftRight pid doc
