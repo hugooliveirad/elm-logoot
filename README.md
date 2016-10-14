@@ -37,8 +37,7 @@ classic "changing the order of the operands does not change the result".
 ```elm
 import Logoot exposing (empty, insert, toList)
 
--- Will explain about a Pid below
-pid = ([(2, 3), 0])
+pid = ([(2, 3)], 0)
 
 logoot1 = empty ""
     |> insert pid "hey!" 
