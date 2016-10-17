@@ -274,10 +274,11 @@ insertAfter site clock pid content logoot =
 posBetween : Site -> Positions -> Positions -> Positions
 posBetween site posl posr =
     let
+        ( poslp, posrp ) =
+            padPositions posl posr
+
         pos =
-            ( posl, posr )
-                |> uncurry padPositions
-                |> uncurry zip
+            zip poslp posrp
                 |> List.foldl
                     (\( p1, p2 ) ( folded, acc ) ->
                         if folded then
@@ -300,7 +301,7 @@ posBetween site posl posr =
                 |> snd
 
         newPos =
-            if pos == posl then
+            if (pos == poslp) || (pos == posrp) then
                 pos ++ [ ( 0, site ) ]
             else
                 pos
