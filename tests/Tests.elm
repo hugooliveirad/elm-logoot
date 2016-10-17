@@ -34,6 +34,10 @@ on f g a b =
     f (g a) (g b)
 
 
+fThen =
+    flip Maybe.andThen
+
+
 toNonEmptyPositions a =
     case a of
         [] ->
@@ -56,11 +60,11 @@ lineF =
 
 
 siteF =
-    natF
+    F.int
 
 
 clockF =
-    natF
+    F.int
 
 
 pidContentF =
@@ -145,5 +149,44 @@ all =
                         |> List.map snd
                         |> String.join ""
                         |> Expect.equal "hello!"
+            ]
+        , describe "insertAt properties"
+            [ test "always after" <|
+                \pid ->
+                    let
+                        logoot =
+                            empty ""
+                                |> insertAt 2 1 0 "!"
+                                |> fThen (insertAt 2 2 0 "o")
+                                |> fThen (insertAt 2 3 0 "l")
+                                |> fThen (insertAt 2 4 0 "l")
+                                |> fThen (insertAt 2 5 0 "e")
+                                |> fThen (insertAt 2 6 0 "h")
+                    in
+                        case logoot of
+                            Just l ->
+                                l
+                                    |> toList
+                                    |> List.map snd
+                                    |> String.join ""
+                                    |> Expect.equal "hello!"
+
+                            Nothing ->
+                                Expect.fail "Expected to be able to insertAt 0 many times"
+            , fuzz F.int "Just between bounds or Nothing outside bounds" <|
+                \index ->
+                    let
+                        logoot =
+                            empty ""
+                                |> insert ( [ ( 2, 3 ) ], 1 ) "hello"
+                                |> insert ( [ ( 4, 3 ) ], 2 ) "hello"
+                                |> insert ( [ ( 5, 3 ) ], 3 ) "hello"
+                                |> insert ( [ ( 6, 3 ) ], 4 ) "hello"
+                                |> insertAt 3 5 index "wat"
+                    in
+                        if (index > 4) || (index < 0) then
+                            Expect.equal Nothing logoot
+                        else
+                            Expect.notEqual Nothing logoot
             ]
         ]

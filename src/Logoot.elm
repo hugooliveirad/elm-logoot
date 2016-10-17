@@ -11,6 +11,7 @@ module Logoot
         , insert
         , remove
         , insertAfter
+        , insertAt
         , toDict
         , fromDict
         , diffDict
@@ -41,7 +42,7 @@ missing pieces here, help us sending PRs to the GitHub [repository]!
 
 ## Build
 
-@docs empty, insert, remove, insertAfter
+@docs empty, insert, remove, insertAfter, insertAt
 
 ## Query
 
@@ -68,6 +69,7 @@ import Set as Set exposing (..)
 import List as List exposing (..)
 import Array as Array
 import String as String
+import Maybe as Maybe exposing (andThen)
 
 
 -- Types
@@ -269,6 +271,40 @@ insertAfter site clock pid content logoot =
 
             Nothing ->
                 logoot
+
+
+{-| Insert a content that will come after a given index.
+
+If the given index is invalid, return Nothing. If valid, Just Logoot
+-}
+insertAt : Site -> Clock -> Int -> a -> Logoot a -> Maybe (Logoot a)
+insertAt site clock index content logoot =
+    let
+        array =
+            logoot
+                |> toList
+                |> Array.fromList
+
+        left =
+            Array.get index array `andThen` (fst >> Just) `andThen` (fst >> Just)
+
+        right =
+            Array.get (index + 1) array `andThen` (fst >> Just) `andThen` (fst >> Just)
+
+        pid =
+            case ( left, right ) of
+                ( Just l, Just r ) ->
+                    Just (posBetween site l r)
+
+                _ ->
+                    Nothing
+    in
+        case pid of
+            Just p ->
+                Just <| insert ( p, clock ) content logoot
+
+            Nothing ->
+                Nothing
 
 
 posBetween : Site -> Positions -> Positions -> Positions
