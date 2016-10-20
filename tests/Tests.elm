@@ -124,8 +124,8 @@ all =
                 \ops ->
                     on Expect.equal
                         Logoot.toList
-                        (applyOps ops <| empty "")
-                        (applyOps ops <| empty "")
+                        (empty "" |> applyOps ops)
+                        (empty "" |> applyOps ops |> applyOps ops)
             , fuzz opsF "commutative" <|
                 \ops ->
                     on Expect.equal
