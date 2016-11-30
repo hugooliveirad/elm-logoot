@@ -69,6 +69,7 @@ import Set as Set exposing (..)
 import List as List exposing (..)
 import Array as Array
 import String as String
+import Tuple as Tuple
 import Maybe as Maybe exposing (andThen)
 
 
@@ -283,10 +284,10 @@ insertAt site clock index content logoot =
                 |> Array.fromList
 
         left =
-            Array.get index array `andThen` (fst >> Just) `andThen` (fst >> Just)
+            Array.get index array |> andThen (Tuple.first >> Just) |> andThen (Tuple.first >> Just)
 
         right =
-            Array.get (index + 1) array `andThen` (fst >> Just) `andThen` (fst >> Just)
+            Array.get (index + 1) array |> andThen (Tuple.first >> Just) |> andThen (Tuple.first >> Just)
 
         pid =
             case ( left, right ) of
@@ -317,13 +318,13 @@ posBetween site posl posr =
                         if folded then
                             ( folded, acc )
                         else
-                            case compare (fst p1) (fst p2) of
+                            case compare (Tuple.first p1) (Tuple.first p2) of
                                 EQ ->
                                     ( False, acc ++ [ p1 ] )
 
                                 LT ->
-                                    if fst p1 + 1 < fst p2 then
-                                        ( True, acc ++ [ ( fst p1 + 1, site ) ] )
+                                    if Tuple.first p1 + 1 < Tuple.first p2 then
+                                        ( True, acc ++ [ ( Tuple.first p1 + 1, site ) ] )
                                     else
                                         ( True, posl ++ [ ( 0, site ) ] )
 
@@ -331,7 +332,7 @@ posBetween site posl posr =
                                     ( False, acc ++ [ p1 ] )
                     )
                     ( False, [] )
-                |> snd
+                |> Tuple.second
 
         newPos =
             if (pos == poslp) || (pos == posrp) then
@@ -390,7 +391,7 @@ fromDict v =
 -}
 diffDict : Logoot a -> Logoot a -> Dict Pid a
 diffDict =
-    Dict.diff `on` toDict
+    on Dict.diff toDict
 
 
 {-| Returns `Dict Pid a` of the pairs that appears
@@ -398,7 +399,7 @@ diffDict =
 -}
 intersectDict : Logoot a -> Logoot a -> Dict Pid a
 intersectDict =
-    Dict.intersect `on` toDict
+    on Dict.intersect toDict
 
 
 
@@ -409,14 +410,14 @@ intersectDict =
 -}
 keys : Logoot a -> List Pid
 keys =
-    List.map fst << toList
+    List.map Tuple.first << toList
 
 
 {-| Get all of the values in a `Logoot a`, in the order of their keys.
 -}
 values : Logoot a -> List a
 values =
-    List.map snd << toList
+    List.map Tuple.second << toList
 
 
 {-| Convert a `Logoot a` into a sorted association list `List (Pid, a)`.
@@ -476,9 +477,9 @@ comparePos posl posr =
 
 comparePid : Pid -> Pid -> Order
 comparePid pidl pidr =
-    case comparePos (fst pidl) (fst pidr) of
+    case comparePos (Tuple.first pidl) (Tuple.first pidr) of
         EQ ->
-            compare (snd pidl) (snd pidr)
+            compare (Tuple.second pidl) (Tuple.second pidr)
 
         x ->
             x
@@ -527,13 +528,13 @@ findLeftRight pid logoot =
         pids =
             logoot
                 |> toList
-                |> List.map fst
+                |> List.map Tuple.first
                 |> Array.fromList
 
         indexed =
             pids
                 |> Array.toIndexedList
-                |> find (\x -> snd x == pid)
+                |> find (\x -> Tuple.second x == pid)
 
         index =
             case indexed of
@@ -559,7 +560,7 @@ sortLogoot (Logoot t doc) =
         |> Array.fromList
         |> Array.push doc.content.last
         |> Array.toList
-        |> sortWith (on comparePid fst)
+        |> sortWith (on comparePid Tuple.first)
 
 
 
