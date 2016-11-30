@@ -553,7 +553,13 @@ findLeftRight pid logoot =
 
 sortLogoot : Logoot a -> List ( Pid, a )
 sortLogoot (Logoot t doc) =
-    [ doc.content.first ] ++ Dict.toList doc.content.intermediate ++ [ doc.content.last ] |> sortWith (comparePid `on` fst)
+    doc.content.intermediate
+        |> Dict.toList
+        |> (::) doc.content.first
+        |> Array.fromList
+        |> Array.push doc.content.last
+        |> Array.toList
+        |> sortWith (on comparePid fst)
 
 
 
