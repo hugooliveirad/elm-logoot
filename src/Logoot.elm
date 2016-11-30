@@ -90,7 +90,6 @@ type Logoot a
             , intermediate : Dict Pid a
             , last : ( Pid, a )
             }
-        , sorted : List ( Pid, a )
         }
 
 
@@ -170,7 +169,6 @@ empty v =
             , intermediate = Dict.empty
             , last = ( lastPid, v )
             }
-        , sorted = [ ( firstPid, v ), ( lastPid, v ) ]
         }
 
 
@@ -211,7 +209,6 @@ insert pid pidcontent ((Logoot t doc) as logoot) =
                             { doc
                                 | content = { content | intermediate = newInter }
                             }
-                            |> sortLogoot
                 in
                     setDegree pid d dg
 
@@ -243,10 +240,10 @@ remove pid pidcontent ((Logoot t doc) as logoot) =
             intermediate =
                 content.intermediate
         in
-            if toDict logoot |> Dict.member pid then
-                Logoot t { doc | content = { content | intermediate = intermediate |> Dict.remove pid } } |> sortLogoot
+            if Dict.member pid intermediate then
+                Logoot t { doc | content = { content | intermediate = intermediate |> Dict.remove pid } }
             else
-                setDegree pid logoot (degree pid logoot - 1) |> sortLogoot
+                setDegree pid logoot (degree pid logoot - 1)
 
 
 {-| Insert a content that will come after `Pid` when `Logoot a` is sorted.
@@ -425,8 +422,8 @@ values =
 {-| Convert a `Logoot a` into a sorted association list `List (Pid, a)`.
 -}
 toList : Logoot a -> List ( Pid, a )
-toList (Logoot _ { sorted }) =
-    sorted
+toList =
+    sortLogoot
 
 
 {-| Convert an association list `List (Pid, a)` into a `Logoot a`.
@@ -554,12 +551,9 @@ findLeftRight pid logoot =
                 ( Nothing, Nothing )
 
 
-sortLogoot : Logoot a -> Logoot a
+sortLogoot : Logoot a -> List ( Pid, a )
 sortLogoot (Logoot t doc) =
-    Logoot t
-        { doc
-            | sorted = [ doc.content.first ] ++ Dict.toList doc.content.intermediate ++ [ doc.content.last ] |> sortWith (comparePid `on` fst)
-        }
+    [ doc.content.first ] ++ Dict.toList doc.content.intermediate ++ [ doc.content.last ] |> sortWith (comparePid `on` fst)
 
 
 
